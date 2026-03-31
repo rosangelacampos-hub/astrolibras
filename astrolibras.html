@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<!--
+  AstroLIBRAS — Quiz Espacial de LIBRAS
+  Autora: Rosângela C. C. Campos
+  Desenvolvimento: jogo educativo sobre LIBRAS e legislação brasileira
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AstroLIBRAS — Quiz Espacial de LIBRAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Exo 2', sans-serif; }
+
+  /* ── STARS BACKGROUND ── */
+  #canvas-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
+  /* ── SCREENS ── */
+  .screen { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center; }
+  .screen.active { display: flex; }
+
+  /* ══ INTRO SCREEN — GRAPHICAL ══ */
+  #screen-intro {
+    background: radial-gradient(ellipse 120% 80% at 50% 110%, #001a3a 0%, #000510 55%, #000 100%);
+    overflow: hidden;
+  }
+  .intro-planet {
+    position: absolute; bottom: -80px; left: 50%; transform: translateX(-50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse at 50% 80%, #0a2a60 0%, #030e25 60%, #000 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 80px #00d4ff22, 0 -20px 60px #00aaff11;
+    border-top: 2px solid rgba(0,180,255,0.3);
+  }
+  .intro-rings {
+    position: absolute; bottom: -60px; left: 50%; transform: translateX(-50%);
+    width: 760px; height: 120px;
+    border: 2px solid rgba(0,180,255,0.18);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .intro-rings2 {
+    position: absolute; bottom: -44px; left: 50%; transform: translateX(-50%);
+    width: 680px; height: 90px;
+    border: 1px solid rgba(0,120,220,0.12);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  /* floating asteroids deco */
+  .deco-ast {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #3a2a10, #1a0f00);
+    border: 1px solid #a07840;
+    box-shadow: 0 0 10px #a0784044;
+    animation: floatAst 6s ease-in-out infinite;
+  }
+  @keyframes floatAst {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-12px) rotate(8deg); }
+  }
+  /* laser beams deco */
+  .deco-laser {
+    position: absolute; width: 3px; border-radius: 2px;
+    background: linear-gradient(to bottom, #00ffcc, #00aaff);
+    box-shadow: 0 0 8px #00ffcc;
+    animation: laserShoot 2.4s ease-in infinite;
+    opacity: 0;
+  }
+  @keyframes laserShoot {
+    0% { opacity: 0; transform: translateY(0); }
+    10% { opacity: 1; }
+    80% { opacity: 1; transform: translateY(-180px); }
+    100% { opacity: 0; transform: translateY(-200px); }
+  }
+
+  .intro-content {
+    position: relative; z-index: 2; text-align: center; padding: 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+    margin-bottom: 60px;
+  }
+  .intro-badge {
+    font-family: 'Orbitron', monospace; font-size: 0.6rem; letter-spacing: 0.35em;
+    color: #4af; text-transform: uppercase; margin-bottom: 10px;
+    background: rgba(0,150,255,0.1); border: 1px solid rgba(0,150,255,0.25);
+    padding: 5px 18px; border-radius: 20px;
+  }
+  .intro-title {
+    font-family: 'Orbitron', monospace; font-weight: 900;
+    font-size: clamp(2.6rem, 8vw, 5rem);
+    background: linear-gradient(135deg, #fff 20%, #00d4ff 60%, #0080ff 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    text-shadow: none;
+    letter-spacing: 0.04em; line-height: 1; margin-bottom: 6px;
+    filter: drop-shadow(0 0 30px #00d4ff66);
+  }
+  .intro-subtitle {
+    font-family: 'Orbitron', monospace; font-size: clamp(0.6rem, 1.5vw, 0.8rem);
+    color: #4af; letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 32px;
+  }
+  /* stat pills */
+  .intro-stats {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 28px;
+  }
+  .stat-pill {
+    background: rgba(0,50,120,0.25); border: 1px solid rgba(0,180,255,0.2);
+    border-radius: 10px; padding: 10px 18px; text-align: center; min-width: 100px;
+  }
+  .stat-pill .sp-num {
+    font-family: 'Orbitron', monospace; font-size: 1.3rem; font-weight: 700; color: #00d4ff;
+    display: block;
+  }
+  .stat-pill .sp-label { font-size: 0.68rem; color: #79a; letter-spacing: 0.1em; }
+
+  .intro-controls {
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px;
+  }
+  .ctrl-chip {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px; padding: 5px 14px; font-size: 0.75rem; color: #9bc;
+  }
+
+  .btn-start {
+    font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700; letter-spacing: 0.12em;
+    background: linear-gradient(135deg, #0080ff, #00d4ff);
+    color: #000; border: none; border-radius: 10px; padding: 16px 52px;
+    cursor: pointer; text-transform: uppercase; position: relative; overflow: hidden;
+    box-shadow: 0 0 30px #00d4ff55, 0 4px 20px rgba(0,0,0,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-start::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.25));
+    pointer-events: none;
+  }
+  .btn-start:hover { transform: scale(1.06); box-shadow: 0 0 50px #00d4ffaa; }
+
+  /* ══ PHASE TEXT SCREEN ══ */
+  #screen-phase-text {
+    background: linear-gradient(180deg, #000510 0%, #020b1a 70%, #000 100%);
+    padding: 20px; overflow-y: auto;
+  }
+  .pt-inner { max-width: 700px; width: 100%; text-align: center; }
+  .pt-badge {
+    font-family: 'Orbitron', monospace; font-size: 0.6rem; letter-spacing: 0.3em;
+    color: #4af; text-transform: uppercase;
+    background: rgba(0,150,255,0.1); border: 1px solid rgba(0,150,255,0.25);
+    padding: 5px 18px; border-radius: 20px; display: inline-block; margin-bottom: 10px;
+  }
+  .pt-title {
+    font-family: 'Orbitron', monospace; font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 900;
+    color: #00d4ff; margin-bottom: 20px;
+    text-shadow: 0 0 20px #00d4ff55;
+  }
+  .pt-text-box {
+    background: rgba(0,180,255,0.05); border: 1px solid rgba(0,180,255,0.18);
+    border-radius: 14px; padding: 22px 26px; text-align: left; margin-bottom: 20px;
+  }
+  .pt-text-box p {
+    color: #cde; font-size: clamp(0.9rem, 1.8vw, 1.02rem); line-height: 1.8;
+  }
+  .pt-text-box p + p { margin-top: 10px; }
+  .pt-note {
+    background: rgba(0,80,160,0.15); border: 1px solid rgba(0,180,255,0.15);
+    border-radius: 10px; padding: 12px 18px; font-size: 0.85rem; color: #9bc;
+    margin-bottom: 22px; text-align: center;
+  }
+  .btn-read { /* same style as btn-start */
+    font-family: 'Orbitron', monospace; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.12em;
+    background: linear-gradient(135deg, #0080ff, #00d4ff);
+    color: #000; border: none; border-radius: 10px; padding: 14px 44px;
+    cursor: pointer; text-transform: uppercase;
+    box-shadow: 0 0 24px #00d4ff44; transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-read:hover { transform: scale(1.05); box-shadow: 0 0 40px #00d4ff88; }
+
+  /* ── GAME SCREEN ── */
+  #screen-game { background: transparent; z-index: 5; }
+  #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 5; touch-action: none; cursor: none; }
+
+  /* ── HUD ── */
+  #hud { position: fixed; top: 0; left: 0; right: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; background: rgba(0,5,20,0.75); border-bottom: 1px solid rgba(0,180,255,0.2); pointer-events: none; }
+  .hud-block { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .hud-label { font-family: 'Orbitron', monospace; font-size: 0.55rem; letter-spacing: 0.2em; color: #4af; text-transform: uppercase; }
+  .hud-value { font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: 700; color: #fff; }
+  #hud-phase-name { font-family: 'Orbitron', monospace; font-size: 0.75rem; color: #00d4ff; letter-spacing: 0.1em; }
+
+  /* ── POPUP ── */
+  #popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.8); z-index: 30; background: rgba(0,10,30,0.95); border: 1px solid rgba(0,180,255,0.35); border-radius: 16px; padding: 28px 36px; text-align: center; min-width: 300px; max-width: 500px; width: 90%; display: none; pointer-events: all; }
+  #popup.visible { display: block; animation: popIn 0.25s ease forwards; }
+  @keyframes popIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.8); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+  #popup h2 { font-family: 'Orbitron', monospace; color: #00d4ff; font-size: 1.1rem; margin-bottom: 10px; }
+  #popup p { color: #cde; font-size: 0.95rem; line-height: 1.6; margin-bottom: 16px; }
+  .btn-popup { font-family: 'Orbitron', monospace; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; background: linear-gradient(135deg, #0060cc, #00b8e0); color: #fff; border: none; border-radius: 8px; padding: 12px 32px; cursor: pointer; pointer-events: all; transition: transform 0.1s; }
+  .btn-popup:hover { transform: scale(1.04); }
+
+  /* ── RESULT SCREEN ── */
+  #screen-result { background: linear-gradient(180deg, #000510 0%, #020b1a 100%); padding: 20px; overflow-y: auto; }
+  .result-inner { max-width: 600px; width: 100%; }
+  .result-title { font-family: 'Orbitron', monospace; font-size: clamp(1.4rem,4vw,2.2rem); font-weight: 900; color: #00d4ff; text-shadow: 0 0 20px #00d4ff88; margin-bottom: 6px; text-align: center; }
+  .result-sub { font-size: 0.9rem; color: #7ac; letter-spacing: 0.1em; text-align: center; margin-bottom: 24px; }
+  .score-big { font-family: 'Orbitron', monospace; font-size: clamp(3rem, 10vw, 5rem); font-weight: 900; text-align: center; margin: 8px 0 4px; }
+  .score-pts { font-family: 'Orbitron', monospace; font-size: 0.9rem; color: #4af; letter-spacing: 0.2em; text-align: center; margin-bottom: 24px; }
+  .stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-box { background: rgba(0,80,160,0.15); border: 1px solid rgba(0,180,255,0.15); border-radius: 10px; padding: 14px; text-align: center; }
+  .stat-box .sv { font-family: 'Orbitron', monospace; font-size: 1.5rem; font-weight: 700; }
+  .stat-box .sl { font-size: 0.7rem; color: #7ac; letter-spacing: 0.1em; margin-top: 4px; }
+  .answers-title { font-family: 'Orbitron', monospace; font-size: 0.7rem; letter-spacing: 0.18em; color: #4af; margin-bottom: 12px; text-transform: uppercase; }
+  .answer-row { background: rgba(0,180,255,0.05); border: 1px solid rgba(0,180,255,0.12); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+  .answer-row .aq { font-size: 0.85rem; color: #9bc; margin-bottom: 6px; }
+  .answer-row .ac { font-size: 0.9rem; color: #4eff91; font-weight: 600; }
+  /* Credits */
+  .credits {
+    margin-top: 28px; text-align: center; border-top: 1px solid rgba(0,180,255,0.12);
+    padding-top: 16px;
+  }
+  .credits p { font-size: 0.75rem; color: #567; letter-spacing: 0.05em; }
+  .credits strong { color: #79a; font-weight: 600; }
+  .btn-restart { font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; background: linear-gradient(135deg, #0080ff, #00d4ff); color: #000; border: none; border-radius: 8px; padding: 14px 40px; cursor: pointer; display: block; margin: 20px auto 0; transition: transform 0.1s, box-shadow 0.1s; box-shadow: 0 0 20px #00d4ff44; }
+  .btn-restart:hover { transform: scale(1.04); box-shadow: 0 0 36px #00d4ff88; }
+
+  @media (max-width: 480px) {
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .intro-planet { width: 100vw; }
+    .intro-rings { width: 130vw; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas-bg"></canvas>
+
+<!-- ══ INTRO SCREEN — GRAPHICAL ══ -->
+<div id="screen-intro" class="screen active">
+  <!-- decorative planet -->
+  <div class="intro-rings2"></div>
+  <div class="intro-rings"></div>
+  <div class="intro-planet"></div>
+
+  <!-- decorative floating asteroids -->
+  <div class="deco-ast" style="width:38px;height:38px;top:18%;left:12%;animation-delay:0s;animation-duration:7s"></div>
+  <div class="deco-ast" style="width:22px;height:22px;top:30%;left:80%;animation-delay:1.2s;animation-duration:5.5s"></div>
+  <div class="deco-ast" style="width:48px;height:44px;top:60%;left:7%;animation-delay:2s;animation-duration:8s"></div>
+  <div class="deco-ast" style="width:18px;height:18px;top:55%;right:9%;animation-delay:0.5s;animation-duration:6s"></div>
+
+  <!-- decorative lasers -->
+  <div class="deco-laser" style="height:50px;left:30%;bottom:30%;animation-delay:0.4s"></div>
+  <div class="deco-laser" style="height:40px;left:68%;bottom:28%;animation-delay:1.6s"></div>
+
+  <div class="intro-content">
+    <div class="intro-badge">🚀 Missão Educativa · LIBRAS</div>
+    <div class="intro-title">AstroLIBRAS</div>
+    <div class="intro-subtitle">Legislação Brasileira · Quiz Espacial</div>
+
+    <div class="intro-stats">
+      <div class="stat-pill"><span class="sp-num">3</span><span class="sp-label">Fases</span></div>
+      <div class="stat-pill"><span class="sp-num">8</span><span class="sp-label">Perguntas</span></div>
+      <div class="stat-pill"><span class="sp-num">+20</span><span class="sp-label">Pts / Acerto</span></div>
+      <div class="stat-pill"><span class="sp-num">−5</span><span class="sp-label">Pts / Erro</span></div>
+    </div>
+
+    <div class="intro-controls">
+      <span class="ctrl-chip">🖱 Mouse → mover nave</span>
+      <span class="ctrl-chip">🖱 Clique → atirar laser</span>
+      <span class="ctrl-chip">👆 Touch → arrastar + toque</span>
+      <span class="ctrl-chip">⌨️ Setas / Espaço</span>
+    </div>
+
+    <button class="btn-start" onclick="startGame()">▶ INICIAR MISSÃO</button>
+  </div>
+</div>
+
+<!-- ══ PHASE TEXT SCREEN ══ -->
+<div id="screen-phase-text" class="screen">
+  <div class="pt-inner">
+    <div class="pt-badge" id="pt-badge">FASE I</div>
+    <div class="pt-title" id="pt-title">Leia antes de responder</div>
+    <div class="pt-text-box">
+      <p id="pt-body">Texto aqui.</p>
+    </div>
+    <div class="pt-note" id="pt-note">📖 Com base neste texto, responda as perguntas da Fase I</div>
+    <button class="btn-read" onclick="startPhaseQuestions()">🎯 RESPONDER PERGUNTAS</button>
+  </div>
+</div>
+
+<!-- ══ HUD ══ -->
+<div id="hud" style="display:none;">
+  <div class="hud-block">
+    <div class="hud-label">Pontuação</div>
+    <div class="hud-value" id="hud-score">0</div>
+  </div>
+  <div class="hud-block">
+    <div id="hud-phase-name">FASE I</div>
+    <div class="hud-label" id="hud-qnum">Pergunta 1/8</div>
+  </div>
+  <div class="hud-block">
+    <div class="hud-label">Vidas</div>
+    <div class="hud-value" id="hud-lives">❤️❤️❤️</div>
+  </div>
+</div>
+
+<!-- ══ GAME CANVAS ══ -->
+<canvas id="game-canvas" style="display:none;"></canvas>
+
+<!-- ══ POPUP ══ -->
+<div id="popup">
+  <h2 id="popup-title">Título</h2>
+  <p id="popup-body">Corpo</p>
+  <button class="btn-popup" id="popup-btn" onclick="popupAction()">Continuar</button>
+</div>
+
+<!-- ══ RESULT SCREEN ══ -->
+<div id="screen-result" class="screen">
+  <div class="result-inner">
+    <div class="result-title">Missão Concluída</div>
+    <div class="result-sub">RELATÓRIO DE DESEMPENHO</div>
+    <div class="score-big" id="r-score">0</div>
+    <div class="score-pts">PONTOS TOTAIS</div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="sv" id="r-correct" style="color:#4eff91">0</div><div class="sl">ACERTOS</div></div>
+      <div class="stat-box"><div class="sv" id="r-wrong" style="color:#ff5c5c">0</div><div class="sl">ERROS</div></div>
+      <div class="stat-box"><div class="sv" id="r-pct" style="color:#00d4ff">0%</div><div class="sl">PRECISÃO</div></div>
+    </div>
+    <div class="answers-title">Respostas Corretas</div>
+    <div id="r-answers"></div>
+    <button class="btn-restart" onclick="restartGame()">↺ JOGAR NOVAMENTE</button>
+    <div class="credits">
+      <p>Quiz desenvolvido por <strong>Rosângela C. C. Campos</strong></p>
+      <p style="margin-top:4px;color:#334">AstroLIBRAS · Educação e Inclusão</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  AUTORA: Rosângela C. C. Campos
+//  AstroLIBRAS — Quiz Espacial de LIBRAS
+//  Jogo educativo sobre LIBRAS e legislação brasileira
+// ═══════════════════════════════════════════════════════════
+
+// ─── PHASE TEXTS ───
+const PHASE_TEXTS = {
+  1: {
+    badge: 'FASE I — Perguntas 1 e 2',
+    title: 'Texto Base — Fase I',
+    body: `A Língua Brasileira de Sinais (Libras) é uma língua de modalidade visual-motora, com estrutura gramatical própria, constituída de um sistema linguístico de transmissão de ideias e fatos, oriundos de comunidades de pessoas surdas do Brasil. A Libras é reconhecida pela Lei nº 10.436, de 24 de abril de 2002, como meio legal de comunicação e expressão, sendo utilizada no território brasileiro pela comunidade surda.`,
+    note: '📖 Com base neste texto, responda as perguntas 1 e 2 da Fase I.'
+  },
+  2: {
+    badge: 'FASE II — Perguntas 3, 4 e 5',
+    title: 'Texto Base — Fase II',
+    body: `Este orgulho é uma consequência de aceitação e exercício da identidade como prática cultural e linguística e se apresentam como fundamentos da identidade do Ser Surdo. Abrindo aqui espaço para nos incluirmos no debate, afirmamos que, por isso, não nos aceitamos como deficientes, mas nos compreendemos como grupo linguístico minoritário subjugado sob o olhar da maioria linguística. Adequa-se ao termo Surdo como identidade cultural, implica aceitar que existe felicidade na realidade do Ser Surdo — e não tristeza de ser ou portar uma enfermidade. Afirmando mais uma vez que a diferença é comunicacional, de modo que aquilo que diferencia o surdo dos ouvintes é a modalidade das suas línguas.`,
+    note: '📖 Com base neste texto, responda as perguntas 3, 4 e 5 da Fase II.'
+  },
+  3: {
+    badge: 'FASE III — Perguntas 6, 7 e 8',
+    title: 'Texto Base — Fase III',
+    body: `O Decreto nº 5.626 de 22 de dezembro de 2005 regulamenta a Lei nº 10.436, de 24 de abril de 2002, que dispõe sobre a Língua Brasileira de Sinais - Libras, e o art. 18 da Lei nº 10.098, de 19 de dezembro de 2000.\n\nArt. 2º Para os fins deste Decreto, considera-se pessoa surda aquela que, por ter perda auditiva, compreende e interage com o mundo por meio de experiências visuais, manifestando sua cultura principalmente pelo uso da Língua Brasileira de Sinais – Libras.\n\nParágrafo único. Considera-se deficiência auditiva a perda bilateral, parcial ou total, de quarenta e um decibéis (dB) ou mais, aferida por audiograma nas frequências de 500Hz, 1.000Hz, 2.000Hz e 3.000Hz.`,
+    note: '📖 Com base neste texto, responda as perguntas 6, 7 e 8 da Fase III.'
+  }
+};
+
+// ─── QUESTIONS ───
+const QUESTIONS = [
+  // ── FASE I ──
+  {
+    phase: 1, multi: false,
+    text: "Qual a natureza da Libras?",
+    options: [
+      { label: "Áudio Visual",      correct: false },
+      { label: "Sonora Visual",     correct: false },
+      { label: "Mímica Gestual",    correct: false },
+      { label: "Visual-Motora",     correct: true  },
+      { label: "Simbólica",         correct: false },
+      { label: "Fictícia",          correct: false },
+    ]
+  },
+  {
+    phase: 1, multi: false,
+    text: "A Libras é utilizada em qual território?",
+    options: [
+      { label: "Brasileiro",       correct: true  },
+      { label: "América Latina",   correct: false },
+      { label: "Francês",          correct: false },
+      { label: "EUA",              correct: false },
+      { label: "Russo",            correct: false },
+    ]
+  },
+
+  // ── FASE II ──
+  {
+    phase: 2, multi: true,
+    text: "Quais elementos culturais são reforçados ao assumir a Identidade Surda? (3 corretas)",
+    options: [
+      { label: "Cultura Surda",    correct: true  },
+      { label: "Ser Surdo",        correct: true  },
+      { label: "Língua",           correct: false },
+      { label: "Ser Deficiente",   correct: false },
+      { label: "Orgulho Surdo",    correct: true  },
+      { label: "Oralidade",        correct: false },
+    ]
+  },
+  {
+    phase: 2, multi: false,
+    text: "Qual evento marca o fortalecimento da Identidade Surda?",
+    options: [
+      { label: "Marcha do Orgulho LGBTQIAPN+", correct: false },
+      { label: "Marcha da Consciência Negra",   correct: false },
+      { label: "Marcha do Orgulho Surdo",       correct: true  },
+      { label: "Marcha das Vadias",             correct: false },
+    ]
+  },
+  {
+    phase: 2, multi: false,
+    text: "Qual mês acontece a Marcha do Orgulho Surdo?",
+    options: [
+      { label: "Outubro",    correct: false },
+      { label: "Agosto",     correct: false },
+      { label: "Fevereiro",  correct: false },
+      { label: "Setembro",   correct: true  },
+      { label: "Novembro",   correct: false },
+      { label: "Junho",      correct: false },
+    ]
+  },
+
+  // ── FASE III ──
+  {
+    phase: 3, multi: true,
+    text: "O Decreto nº 5.626 estabelece quais mecanismos para efetivação dos direitos da Pessoa Surda? (2 corretas)",
+    options: [
+      { label: "Ser Deficiente",              correct: false },
+      { label: "Formação de Professor",       correct: true  },
+      { label: "Formação Tradutor Intérprete",correct: true  },
+      { label: "Uso do Português",            correct: false },
+      { label: "Obrigação da Oralidade",      correct: false },
+    ]
+  },
+  {
+    phase: 3, multi: false,
+    text: "Qual o número da lei que dispõe sobre a Língua Brasileira de Sinais - Libras?",
+    options: [
+      { label: "Lei nº 11.340/2006",  correct: false },
+      { label: "Lei nº 13.104/2015",  correct: false },
+      { label: "Lei nº 10.436/2002",  correct: true  },
+      { label: "Lei nº 7.716/1989",   correct: false },
+      { label: "Lei nº 8.069/1990",   correct: false },
+    ]
+  },
+  {
+    phase: 3, multi: true,
+    text: "Quais elementos linguísticos da Libras são reconhecidos na Lei nº 10.436/2002? (2 corretas)",
+    options: [
+      { label: "Mímicas",                      correct: false },
+      { label: "Natureza Visual-Motora",        correct: true  },
+      { label: "Oralidade",                     correct: false },
+      { label: "Comunicação Total",             correct: false },
+      { label: "Estrutura Gramatical Própria",  correct: true  },
+      { label: "Uso Mundial",                   correct: false },
+    ]
+  }
+];
+
+const TOTAL_Q = QUESTIONS.length;
+
+// ═══════════════════════════════════════════════════════════
+//  STARFIELD
+// ═══════════════════════════════════════════════════════════
+const bgCanvas = document.getElementById('canvas-bg');
+const bgCtx = bgCanvas.getContext('2d');
+let stars = [];
+function initStars() {
+  bgCanvas.width = window.innerWidth; bgCanvas.height = window.innerHeight;
+  stars = Array.from({length: 200}, () => ({
+    x: Math.random() * bgCanvas.width, y: Math.random() * bgCanvas.height,
+    r: Math.random() * 1.5 + 0.3, speed: Math.random() * 0.4 + 0.05,
+    alpha: Math.random() * 0.7 + 0.3
+  }));
+}
+function animateStars() {
+  bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+  bgCtx.fillStyle = '#000510'; bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+  stars.forEach(s => {
+    s.y += s.speed; if (s.y > bgCanvas.height) { s.y = 0; s.x = Math.random() * bgCanvas.width; }
+    bgCtx.save(); bgCtx.globalAlpha = s.alpha;
+    bgCtx.fillStyle = '#fff'; bgCtx.beginPath();
+    bgCtx.arc(s.x, s.y, s.r, 0, Math.PI*2); bgCtx.fill(); bgCtx.restore();
+  });
+  requestAnimationFrame(animateStars);
+}
+initStars(); animateStars();
+window.addEventListener('resize', () => { initStars(); if (gameRunning) resizeGameCanvas(); });
+
+// ═══════════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════════
+let score = 0, correctCount = 0, wrongCount = 0;
+let currentQ = 0;
+let gameRunning = false;
+let popupCallback = null;
+let pendingPhaseStart = 0; // which question to start after phase text
+
+// per-question state
+let asteroids = [], lasers = [], particles = [], floatTexts = [];
+let shipX = 0, canvasW = 0, canvasH = 0;
+let spawnTimer = 0, spawnInterval = 90;
+let correctHitCount = 0, correctNeeded = 0;
+let questionDone = false;
+
+const gc = document.getElementById('game-canvas');
+const gctx = gc.getContext('2d');
+
+function resizeGameCanvas() {
+  canvasW = gc.width = window.innerWidth;
+  canvasH = gc.height = window.innerHeight;
+  if (shipX === 0) shipX = canvasW / 2;
+}
+
+// ─── PHASE TEXT SCREEN ───
+function showPhaseText(phaseNum, onContinue) {
+  gameRunning = false;
+  gc.style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('popup').classList.remove('visible');
+
+  const data = PHASE_TEXTS[phaseNum];
+  document.getElementById('pt-badge').textContent = data.badge;
+  document.getElementById('pt-title').textContent = data.title;
+  // handle newlines
+  document.getElementById('pt-body').innerHTML = data.body.replace(/\n/g, '<br><br>');
+  document.getElementById('pt-note').textContent = data.note;
+  document.getElementById('screen-phase-text').classList.add('active');
+
+  // scroll to top
+  document.querySelector('.pt-inner').parentElement.scrollTop = 0;
+
+  // store callback via global
+  pendingPhaseStart = onContinue;
+}
+
+function startPhaseQuestions() {
+  document.getElementById('screen-phase-text').classList.remove('active');
+  document.getElementById('hud').style.display = 'flex';
+  gc.style.display = 'block';
+  resizeGameCanvas();
+  gameRunning = true;
+  if (animId) cancelAnimationFrame(animId);
+  const idx = pendingPhaseStart;
+  loadQuestion(idx);
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ─── SHIP ───
+const SHIP_W = 44, SHIP_H = 52, BASE_Y_PAD = 70;
+function shipY() { return canvasH - BASE_Y_PAD; }
+
+function drawShip(x) {
+  const y = shipY(), ctx = gctx;
+  ctx.save();
+  ctx.shadowColor = '#00aaff'; ctx.shadowBlur = 18;
+  ctx.fillStyle = '#0af';
+  ctx.beginPath(); ctx.moveTo(x, y - SHIP_H/2);
+  ctx.lineTo(x - SHIP_W/2, y + SHIP_H/2);
+  ctx.lineTo(x + SHIP_W/2, y + SHIP_H/2);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#003355';
+  ctx.beginPath(); ctx.ellipse(x, y - 6, 10, 14, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(100,220,255,0.6)';
+  ctx.beginPath(); ctx.ellipse(x, y - 8, 6, 9, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0066aa';
+  ctx.beginPath(); ctx.moveTo(x - SHIP_W/2, y + SHIP_H/2);
+  ctx.lineTo(x - SHIP_W/2 - 18, y + SHIP_H/2 + 10);
+  ctx.lineTo(x - 10, y + 10); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x + SHIP_W/2, y + SHIP_H/2);
+  ctx.lineTo(x + SHIP_W/2 + 18, y + SHIP_H/2 + 10);
+  ctx.lineTo(x + 10, y + 10); ctx.closePath(); ctx.fill();
+  const flameH = 16 + Math.random() * 10;
+  ctx.fillStyle = 'rgba(255,160,40,0.85)';
+  ctx.beginPath(); ctx.moveTo(x - 10, y + SHIP_H/2);
+  ctx.lineTo(x, y + SHIP_H/2 + flameH);
+  ctx.lineTo(x + 10, y + SHIP_H/2); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawPlanet() {
+  const ctx = gctx, y = canvasH - 22, r = canvasW * 0.55;
+  ctx.save();
+  const grad = ctx.createRadialGradient(canvasW/2, y + r*0.8, r*0.2, canvasW/2, y, r);
+  grad.addColorStop(0, '#0a2a60'); grad.addColorStop(0.5, '#051530'); grad.addColorStop(1, '#000510');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(canvasW/2, y + r*0.8, r, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,180,255,0.3)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(canvasW/2, y + r*0.8, r, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+const DANGER_Y_RATIO = 0.82;
+function drawDangerLine() {
+  gctx.save();
+  gctx.strokeStyle = 'rgba(255,60,60,0.5)'; gctx.lineWidth = 1.5;
+  gctx.setLineDash([8,6]);
+  gctx.beginPath(); gctx.moveTo(0, canvasH * DANGER_Y_RATIO); gctx.lineTo(canvasW, canvasH * DANGER_Y_RATIO);
+  gctx.stroke(); gctx.setLineDash([]);
+  gctx.fillStyle = 'rgba(255,60,60,0.5)'; gctx.font = '11px Orbitron, monospace';
+  gctx.fillText('LIMITE DE DESCIDA', 8, canvasH * DANGER_Y_RATIO - 5);
+  gctx.restore();
+}
+
+function drawQuestionBanner() {
+  const q = QUESTIONS[currentQ];
+  const ctx = gctx;
+  const bx = 10, by = 52, bw = canvasW - 20, bh = 56;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,10,30,0.85)';
+  ctx.strokeStyle = 'rgba(0,180,255,0.3)'; ctx.lineWidth = 1;
+  roundRect(ctx, bx, by, bw, bh, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#4af'; ctx.font = '600 11px Orbitron, monospace';
+  ctx.fillText(`FASE ${q.phase} · PERGUNTA ${currentQ+1}/${TOTAL_Q}${q.multi ? ' · Múltiplas respostas' : ''}`, bx+12, by+18);
+  ctx.fillStyle = '#cde'; ctx.font = '500 13px "Exo 2", sans-serif';
+  wrapText(ctx, q.text, bx+12, by+36, bw-24, 17);
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+function wrapText(ctx, text, x, y, maxW, lineH) {
+  const words = text.split(' '); let line = '';
+  for (let i = 0; i < words.length; i++) {
+    const test = line + words[i] + ' ';
+    if (ctx.measureText(test).width > maxW && i > 0) {
+      ctx.fillText(line, x, y); line = words[i] + ' '; y += lineH;
+    } else { line = test; }
+  }
+  ctx.fillText(line, x, y);
+}
+
+// ─── ASTEROIDS ───
+const AST_SPEED_BASE = 1.2, AST_SPEED_VAR = 0.7;
+const AST_R = 48;
+
+function spawnAsteroid() {
+  const q = QUESTIONS[currentQ];
+  const available = q.options.filter(o => !asteroids.some(a => a.label === o.label));
+  if (available.length === 0) return;
+  const opt = available[Math.floor(Math.random() * available.length)];
+  const margin = AST_R + 10;
+  asteroids.push({
+    x: margin + Math.random() * (canvasW - margin*2),
+    y: -AST_R,
+    vx: (Math.random() - 0.5) * 1.2,
+    vy: AST_SPEED_BASE + Math.random() * AST_SPEED_VAR,
+    r: AST_R,
+    label: opt.label, correct: opt.correct,
+    angle: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.02,
+    color: '#2a1f0e', border: '#a07840',
+    hit: false, hitAnim: 0
+  });
+}
+
+function drawAsteroid(a) {
+  const ctx = gctx; ctx.save();
+  ctx.translate(a.x, a.y); ctx.rotate(a.angle);
+  ctx.fillStyle = a.color; ctx.strokeStyle = a.border; ctx.lineWidth = 2;
+  ctx.shadowColor = a.border; ctx.shadowBlur = 12;
+  ctx.beginPath();
+  const pts = 10;
+  for (let i = 0; i < pts; i++) {
+    const ang = (i / pts) * Math.PI * 2;
+    const jitter = a.r * (0.75 + 0.25 * Math.sin(i * 3.7 + a.angle * 2));
+    const px = Math.cos(ang) * jitter, py = Math.sin(ang) * jitter;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.shadowColor = a.border; ctx.shadowBlur = 8;
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 10px "Exo 2", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  wrapTextCenter(ctx, a.label, a.x, a.y, a.r * 1.7, 13);
+  ctx.restore();
+}
+function wrapTextCenter(ctx, text, cx, cy, maxW, lineH) {
+  const words = text.split(' '); let lines = [], line = '';
+  for (let i = 0; i < words.length; i++) {
+    const test = line + words[i] + ' ';
+    if (ctx.measureText(test).width > maxW && i > 0) { lines.push(line.trim()); line = words[i] + ' '; }
+    else { line = test; }
+  }
+  lines.push(line.trim());
+  const startY = cy - (lines.length - 1) * lineH / 2;
+  lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * lineH));
+}
+
+// ─── LASERS ───
+function fireLaser() {
+  lasers.push({ x: shipX, y: shipY() - SHIP_H/2, vy: -16, w: 4, h: 18 });
+}
+function drawLaser(l) {
+  gctx.save();
+  gctx.fillStyle = '#00ffcc'; gctx.shadowColor = '#00ffcc'; gctx.shadowBlur = 10;
+  gctx.fillRect(l.x - l.w/2, l.y, l.w, l.h); gctx.restore();
+}
+
+// ─── PARTICLES ───
+function explode(x, y, correct) {
+  const col = correct ? '#ffd84a' : '#ff8833';
+  for (let i = 0; i < 18; i++) {
+    const ang = Math.random() * Math.PI * 2, spd = 2 + Math.random() * 5;
+    particles.push({ x, y, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd, alpha: 1, r: 2+Math.random()*4, col });
+  }
+}
+function drawParticle(p) {
+  gctx.save(); gctx.globalAlpha = p.alpha;
+  gctx.fillStyle = p.col; gctx.shadowColor = p.col; gctx.shadowBlur = 8;
+  gctx.beginPath(); gctx.arc(p.x, p.y, p.r, 0, Math.PI*2); gctx.fill(); gctx.restore();
+}
+
+// ─── FLOAT TEXTS ───
+function addFloat(x, y, text, good) {
+  floatTexts.push({ x, y, text, good, alpha: 1, vy: -1.5 });
+}
+function drawFloat(f) {
+  gctx.save(); gctx.globalAlpha = f.alpha;
+  gctx.fillStyle = f.good ? '#4eff91' : '#ff5533'; gctx.shadowColor = gctx.fillStyle; gctx.shadowBlur = 12;
+  gctx.font = 'bold 22px Orbitron, monospace'; gctx.textAlign = 'center';
+  gctx.fillText(f.text, f.x, f.y); gctx.restore();
+}
+
+function dist(ax, ay, bx, by) { return Math.hypot(ax-bx, ay-by); }
+
+// ═══════════════════════════════════════════════════════════
+//  GAME LOOP
+// ═══════════════════════════════════════════════════════════
+let animId = null;
+function gameLoop() {
+  if (!gameRunning) { animId = null; return; }
+  gctx.clearRect(0, 0, canvasW, canvasH);
+  drawPlanet(); drawDangerLine(); drawQuestionBanner();
+
+  if (!questionDone) {
+    spawnTimer++;
+    if (spawnTimer >= spawnInterval) { spawnTimer = 0; spawnAsteroid(); }
+  }
+
+  const dangerY = canvasH * DANGER_Y_RATIO;
+  let anyCorrectPassed = false;
+  for (let i = asteroids.length - 1; i >= 0; i--) {
+    const a = asteroids[i];
+    if (a.hit) { a.hitAnim++; if (a.hitAnim > 18) asteroids.splice(i,1); continue; }
+    a.x += a.vx; a.y += a.vy; a.angle += a.rotSpeed;
+    if (a.x < a.r) { a.x = a.r; a.vx *= -1; }
+    if (a.x > canvasW - a.r) { a.x = canvasW - a.r; a.vx *= -1; }
+    if (a.y > dangerY + a.r) {
+      if (a.correct) anyCorrectPassed = true;
+      asteroids.splice(i, 1); continue;
+    }
+    drawAsteroid(a);
+  }
+  if (!questionDone && anyCorrectPassed) {
+    const remaining = asteroids.filter(a => !a.hit && a.correct);
+    if (remaining.length === 0 && correctHitCount < correctNeeded) onPhaseFailed();
+  }
+
+  for (let i = lasers.length - 1; i >= 0; i--) {
+    const l = lasers[i]; l.y += l.vy;
+    if (l.y < -20) { lasers.splice(i,1); continue; }
+    let hitAst = false;
+    for (let j = asteroids.length - 1; j >= 0; j--) {
+      const a = asteroids[j]; if (a.hit) continue;
+      if (dist(l.x, l.y, a.x, a.y) < a.r + 4) {
+        a.hit = true;
+        explode(a.x, a.y, a.correct);
+        if (a.correct) {
+          score += 20; correctHitCount++;
+          addFloat(a.x, a.y - 30, '+20', true);
+          correctCount++;
+        } else {
+          score = Math.max(0, score - 5);
+          addFloat(a.x, a.y - 30, '-5', false);
+          wrongCount++;
+        }
+        updateHUD();
+        lasers.splice(i, 1); hitAst = true; break;
+      }
+    }
+    if (!hitAst) drawLaser(l);
+    if (!questionDone && correctHitCount >= correctNeeded) {
+      questionDone = true;
+      setTimeout(onQuestionSuccess, 800);
+    }
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]; p.x += p.vx; p.y += p.vy; p.alpha -= 0.04; p.vy += 0.1;
+    if (p.alpha <= 0) { particles.splice(i,1); continue; }
+    drawParticle(p);
+  }
+  for (let i = floatTexts.length - 1; i >= 0; i--) {
+    const f = floatTexts[i]; f.y += f.vy; f.alpha -= 0.025;
+    if (f.alpha <= 0) { floatTexts.splice(i,1); continue; }
+    drawFloat(f);
+  }
+
+  drawShip(shipX);
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  QUESTION FLOW
+// ═══════════════════════════════════════════════════════════
+function loadQuestion(idx) {
+  currentQ = idx; questionDone = false;
+  asteroids = []; lasers = []; particles = []; floatTexts = [];
+  spawnTimer = 0;
+  const q = QUESTIONS[idx];
+  correctNeeded = q.multi ? q.options.filter(o => o.correct).length : 1;
+  correctHitCount = 0;
+  updateHUD();
+}
+
+function onQuestionSuccess() {
+  questionDone = true;
+  const next = currentQ + 1;
+  if (next < QUESTIONS.length) {
+    const nextPhase = QUESTIONS[next].phase;
+    const curPhase  = QUESTIONS[currentQ].phase;
+    if (nextPhase !== curPhase) {
+      // Show phase text before next phase
+      gameRunning = false;
+      gc.style.display = 'none';
+      document.getElementById('hud').style.display = 'none';
+      document.getElementById('popup').classList.remove('visible');
+      showPhaseText(nextPhase, next);
+    } else {
+      showPopup('✅ Pergunta concluída!', `Pontuação atual: ${score} pts. Prepare-se para a próxima!`, () => { loadQuestion(next); });
+    }
+  } else {
+    showResult();
+  }
+}
+
+function onPhaseFailed() {
+  if (questionDone) return;
+  questionDone = true;
+  showPopup('⚠️ Fase Falhou!', 'Nenhuma resposta correta foi destruída a tempo. A pergunta será repetida.', () => { loadQuestion(currentQ); });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  POPUP
+// ═══════════════════════════════════════════════════════════
+function showPopup(title, body, cb) {
+  gameRunning = false;
+  document.getElementById('popup-title').textContent = title;
+  document.getElementById('popup-body').textContent = body;
+  document.getElementById('popup').classList.add('visible');
+  popupCallback = cb;
+}
+function popupAction() {
+  document.getElementById('popup').classList.remove('visible');
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  if (popupCallback) { const cb = popupCallback; popupCallback = null; cb(); }
+  gameRunning = true;
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HUD
+// ═══════════════════════════════════════════════════════════
+function updateHUD() {
+  document.getElementById('hud-score').textContent = score;
+  document.getElementById('hud-qnum').textContent = `Pergunta ${currentQ+1}/${TOTAL_Q}`;
+  document.getElementById('hud-phase-name').textContent = `FASE ${QUESTIONS[currentQ].phase} · LIBRAS`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  START / RESTART
+// ═══════════════════════════════════════════════════════════
+function startGame() {
+  score = 0; correctCount = 0; wrongCount = 0; currentQ = 0;
+  document.getElementById('screen-intro').classList.remove('active');
+  document.getElementById('screen-result').classList.remove('active');
+  // Show Phase I text first
+  showPhaseText(1, 0);
+}
+
+function restartGame() {
+  document.getElementById('screen-result').classList.remove('active');
+  startGame();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RESULT
+// ═══════════════════════════════════════════════════════════
+function showResult() {
+  gameRunning = false;
+  gc.style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('popup').classList.remove('visible');
+
+  const total = correctCount + wrongCount || 1;
+  const pct = Math.round((correctCount / total) * 100);
+  document.getElementById('r-score').textContent = score;
+  document.getElementById('r-score').style.color = score >= 120 ? '#4eff91' : score >= 60 ? '#ffd700' : '#ff5c5c';
+  document.getElementById('r-correct').textContent = correctCount;
+  document.getElementById('r-wrong').textContent = wrongCount;
+  document.getElementById('r-pct').textContent = pct + '%';
+
+  const container = document.getElementById('r-answers');
+  container.innerHTML = '';
+  QUESTIONS.forEach((q, i) => {
+    const corrects = q.options.filter(o => o.correct).map(o => o.label).join(' · ');
+    const div = document.createElement('div'); div.className = 'answer-row';
+    div.innerHTML = `<div class="aq">Pergunta ${i+1}: ${q.text}</div><div class="ac">✓ ${corrects}</div>`;
+    container.appendChild(div);
+  });
+
+  document.getElementById('screen-result').classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════════
+gc.addEventListener('mousemove', e => { shipX = e.clientX; });
+gc.addEventListener('click', e => { if (gameRunning && !questionDone) fireLaser(); });
+
+let lastTouchX = 0;
+gc.addEventListener('touchstart', e => {
+  e.preventDefault();
+  lastTouchX = e.touches[0].clientX;
+  if (gameRunning && !questionDone) fireLaser();
+}, { passive: false });
+gc.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const tx = e.touches[0].clientX;
+  const delta = tx - lastTouchX; lastTouchX = tx;
+  shipX = Math.max(30, Math.min(canvasW - 30, shipX + delta));
+}, { passive: false });
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space') { e.preventDefault(); if (gameRunning && !questionDone) fireLaser(); }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+setInterval(() => {
+  if (!gameRunning) return;
+  if (keys['ArrowLeft'] || keys['KeyA']) shipX = Math.max(30, shipX - 8);
+  if (keys['ArrowRight'] || keys['KeyD']) shipX = Math.min(canvasW - 30, shipX + 8);
+}, 16);
+</script>
+</body>
+</html>
